@@ -1,0 +1,5 @@
+;$Id$
+name = Cool form
+description = Just demostrates Drupal's theming capabiltie
+package = Ideas
+core = 7.x
