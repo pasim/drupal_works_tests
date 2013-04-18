@@ -68,7 +68,7 @@ function user_message_field_access($op, $field, $entity_type, $entity, $account)
       $status = 'TRUE';
     }
     else{
-       drupal_set_message('We don\'t thing you have enough permissions, because '.$permission . ': ' . $status);
+       drupal_set_message('We don\'t think you have enough permissions, because of '.$permission . ': ' . $status);
  
     }
     return $access;
