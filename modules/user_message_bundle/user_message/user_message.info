@@ -1,0 +1,12 @@
+;$Id$
+name = User Live status message
+description = Shows current logged in users status messages, like "eating"
+core = 7.x
+package = User Utilities
+;
+dependencies[] = user_revision
+dependencies[] = views
+dependencies[] = field
+dependencies[] = system (>=7.22)
+;dependencies[] = views_field
+configure = admin/config/people/accounts/user_message

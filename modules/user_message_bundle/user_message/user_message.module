@@ -1,0 +1,452 @@
+<?php
+//$Id$
+
+/**
+ * @author Janis Janovskis <janis.janovskis@gmail.com>
+ */
+
+/** Permissions **/
+
+function user_message_permission() {
+  // Note: This would be very easy to generate programatically,
+  // but it's all typed out here for clarity.
+  // The key text is the machine name of the permission.
+  $perms['view own message'] = array(
+      'title' => t('View own message'
+              ));
+  $perms['edit own message'] = array(
+      'title' => t('Edit own message'
+              ));
+  $perms['view any message'] = array(
+      'title' => t('View any message')
+      );
+  $perms['edit any message'] = array(
+      'title' => t('Edit any message')
+      );
+
+  return $perms;
+}
+
+/**
+ * Implements hook_field_access().
+ */
+
+function user_message_field_access($op, $field, $entity_type, $entity, $account) {
+  // This hook will be invoked for every field type, so we have to
+  // check that it's the one we're interested in.
+  if ($field['type'] == 'user_message') {
+    // First we'll check if the user has the 'superuser'
+    // permissions that node provides. This way administrators
+    // will be able to administer the content types.
+    if (user_access('bypass node access', $account)) {
+      //drupal_set_message(t('User can bypass node access.'));
+      return TRUE;
+    }
+    if (user_access('administer content types', $account)) {
+      //drupal_set_message(t('User can administer content types.'));
+      return TRUE;
+    }
+    // Now check for our own permissions.
+    // $context will end up being either 'any' or 'own.'
+    $context = 'any';
+    switch ($entity_type) {
+      //We care only for user enity
+      case 'user':
+        // While administering the field itself, $entity will be
+        // NULL, so we have to check it.
+        if ($entity) {
+          if ($entity->uid == $account->uid) $context = 'own';
+        }
+    }
+    // Assemble a permission string, such as
+    // 'view any fieldnote'
+    $permission = $op . ' ' . $context . ' message';
+    // Finally, ask Drupal if this account has that permission.
+    $access = user_access($permission, $account);
+    $status = 'FALSE';
+    if ($access) {
+      $status = 'TRUE';
+    }
+    else{
+       drupal_set_message('We don\'t thing you have enough permissions, because '.$permission . ': ' . $status);
+ 
+    }
+    return $access;
+  }
+  // We have no opinion on field types other than our own.
+  return TRUE;
+}
+
+/* end permisions */
+
+function user_message_menu(){
+  $items = array();
+  /**
+   * menu item for main config page
+   * 
+   * @todo Add more configurable options
+   * 
+   */
+  $items['admin/config/people/accounts/user_message'] = array(
+      'title' => 'User Message',
+      'page callback' => 'user_message_config_page',
+      'access arguments' => array('administer users'),
+      'type' => MENU_LOCAL_TASK,
+  );
+  
+  return $items;
+}
+
+/** hook definitions **/
+
+/**
+ * Implements hook_field_info().
+ *
+ * Provides the description of the field.
+ */
+function user_message_field_info() {
+  return array(
+    // We name our field as the associative name of the array.
+    'user_message' => array(
+      'label' => t('User Message and TimeStamp'),
+      'description' => t('Text field, enables to save a custom message and a timestamp.'),
+      'default_widget' => 'user_message_dropdown',
+      'default_formatter' => 'user_message_message_view',
+    ),
+  );
+}
+
+/**
+ * Implements hook_field_validate().
+ *
+ * This hook gives us a chance to validate content that's in our
+ * field. We're really only interested in the $items parameter, since
+ * it holds arrays representing content in the field we've defined.
+ * We want to verify that the items only contain RGB hex values like
+ * this: #RRGGBB. If the item validates, we do nothing. If it doesn't
+ * validate, we add our own error notification to the $errors parameter.
+ *
+ * @see field_example_field_widget_error()
+ */
+function user_message_field_validate($entity_type, $entity, $field, $instance, $langcode, $items, &$errors) {
+  foreach ($items as $delta => $item) {
+    if (!empty($item['message'])) {
+      if (!preg_match('/^[a-zA-Z]+$/', $item['message'])) {
+        $errors[$field['field_name']][$langcode][$delta][] = array(
+          'error' => 'user_message_field_invalid',
+          'message' => t('Only Upper or Lover case letters are permited'),
+        );
+      }
+    }
+  }
+}
+
+
+/**
+ * Implements hook_field_is_empty().
+ *
+ * hook_field_is_emtpy() is where Drupal asks us if this field is empty.
+ * Return TRUE if it does not contain data, FALSE if it does. This lets
+ * the form API flag an error when required fields are empty.
+ */
+function user_message_field_is_empty($item, $field) {
+  return empty($item['message']);
+}
+
+/**
+ * Implements hook_field_formatter_info().
+ *
+ * We need to tell Drupal that we have two different types of formatters
+ * for this field. One will change the text color, and the other will
+ * change the background color.
+ *
+ * @see field_example_field_formatter_view()
+ */
+function user_message_field_formatter_info() {
+  return array(
+    // This formatter just displays the message via drupal set message
+    'user_message_message_view' => array(
+      'label' => t('Drupal message text formater'),
+      'field types' => array('user_message'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_field_formatter_view().
+ *
+ * Two formatters are implemented.
+ * - user_message_message_view outputs user message as drupal message.
+ *
+ * @see user_message_field_formatter_view
+ */
+function user_message_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
+  $element = array();
+  //global $user;
+  switch ($display['type']) {
+    // This formatter simply outputs the field as text and with a color.
+    case 'user_message_message_view':
+      foreach ($items as $delta => $item) {
+        //Only on user pages
+        if($delta == 0 && $entity_type=='user'){
+          
+          if($item['toogle']){
+            //$element[$delta] = drupal_set_message();
+            $element[$delta] = array(
+              '#type' => 'html_tag',
+              '#tag' => 'p',
+              '#value' => t("@name is currently @doing.", array('@name'=>$entity->name, '@doing'=>$item['message'])),
+              '#attributes' => array(
+                  'class'=>'user-message'
+                      ),
+              '#attached' => array(
+              'css' => array(
+                array(
+                'data' => 'p.user-message { background-color:red;}',
+                'type' => 'inline',
+              ),
+            ),
+          ),
+        );
+          }
+          
+        }
+        //Just the first element, no need to continue
+        break;
+      }
+      break;
+  }
+
+  return $element;
+}
+
+/**
+ * Implements hook_field_widget_info().
+ *
+ * Three widgets are provided.
+ * - A simple text-only widget where the user enters the '#ffffff'.
+ * - A 3-textfield widget that gathers the red, green, and blue values
+ *   separately.
+ * - A farbtastic colorpicker widget that chooses the value graphically.
+ *
+ * These widget types will eventually show up in hook_field_widget_form,
+ * where we will have to flesh them out.
+ *
+ * @see field_example_field_widget_form()
+ */
+function user_message_field_widget_info() {
+  return array(
+    'user_message_dropdown' => array(
+      'label' => t('User message main'),
+      'field types' => array('user_message'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_field_widget_form().
+ */
+function user_message_field_widget_form(&$form, &$form_state, $field, $instance, $langcode, $items, $delta, $element) {
+  
+  //Pre caching values
+  $message = isset($items[$delta]['message']) ? $items[$delta]['message'] : NULL;
+  $toogle = isset($items[$delta]['toogle']) ? $items[$delta]['toogle'] : 0;
+  $time = (isset($items[$delta]['message']) && isset($items[$delta]['timestamp'])) ? $items[$delta]['timestamp'] : time();
+  $widget = $element;
+  
+  $widget['#delta'] = $delta;
+
+  switch ($instance['widget']['type']) {
+
+    case 'user_message_dropdown':
+      $widget += array(
+        '#type' => 'textfield',
+        '#default_value' => $message,
+        // Allow a slightly larger size that the field length to allow for some
+        // configurations where all characters won't fit in input field.
+        '#size' => 60,
+        '#maxlength' => 100,
+      );
+      $toogle_elem = array(
+        '#type' => 'checkbox',
+        '#default_value' => $toogle,
+        '#title'=>t('Toogle message display'),
+      );
+      $time_elem = array(
+          '#type' => 'hidden',
+          '#value' => $time,
+      );
+      break;
+
+  }
+
+  $element['message'] = $widget;
+  $element['toogle'] = $toogle_elem;
+  $element['timestamp'] = $time_elem;
+  return $element;
+}
+
+/**
+ * Implements hook_field_widget_error()
+ */
+function user_message_field_widget_error($element, $error, $form, &$form_state) {
+  switch ($error['error']) {
+    case 'user_message_field_invalid':
+      form_error($element, $error['message']);
+      break;
+  }
+}
+
+/* ==== Config area ===*/
+
+/**
+ * 
+ * @return <array> markup array
+ * 
+ */
+function user_message_config_page(){
+  $markup = "<p>Default settings for user form</p>";
+  $markup .= drupal_render(drupal_get_form('user_message_config_form'));
+  
+  return array('#markup'=> $markup);
+}
+
+/**
+ * 
+ * @param <array> $form
+ * @param <array> $form_state - form values
+ * @return <array> form array
+ * 
+ * @todo Definetly needs better configuration for and its implementation!
+ */
+
+function user_message_config_form($form, &$form_state){
+  $form = array();
+  $form['main_user_message'] = array(
+      '#type'=>'textfield',
+      '#title' => t('Main user status message'),
+      '#default_value' => variable_get('main_user_message', ''),
+  );
+  
+  return system_settings_form($form);
+}
+
+/** === Views implementation ==== */
+
+/**
+ * Implements hook_views_api().
+ * @todo Provide implementation
+ */
+function user_message_views_api() {
+  return array(
+    'api' => '3.0',
+    'path' => drupal_get_path('module', 'user_message') . '/views', 
+  );
+}
+
+/** === Blocks == **/
+
+function user_message_block_info(){
+  $blocks['recent_messages'] = array(
+    // info: The name of the block.
+    'info' => t('User Messages: Recent'),
+    // Block caching options (per role, per user, etc.)
+    // We cahe per user
+    'cache' => DRUPAL_CACHE_PER_USER,
+  );
+  return $blocks;
+}
+
+
+function user_message_block_view($delta = ''){
+  switch ($delta) {
+    case 'recent_messages':
+      $block['subject'] = t('Recent User Messages');
+      // The content of the block is typically generated by calling a custom
+      // function.
+      $block['content'] = user_messages_recent();
+
+      break;
+  }
+  
+  return $block;
+}
+
+function user_messages_recent() {
+  $table = user_message_retrive_field_info();
+  if(!$table){
+    return;
+  }
+  global $user;
+  if(arg(0)=='user' && is_int(arg(1))){
+    $user = user_load(arg(1));
+  }
+  /**
+   * Hard coded tables, besause we privide field installation script
+   * @todo Improve and remove hard coded options
+   */
+  $query = db_select('field_revision_field_message', 'ms');
+  $query->fields('ms', array('field_message_message', 'field_message_timestamp'));
+  $query->condition('ms.entity_id', $user->uid, '=');
+  $results = $query->execute();
+  if(empty($results)){
+    return NULL;
+  }
+  $output = "<ul>";
+  foreach ($results as $record) {
+    $output .= "<li>$record->field_message_message at ".date("m d", $record->field_message_timestamp)."</li>";
+  }
+  $output .="</ul>";
+  return $output;
+  
+}
+
+function user_message_retrive_field_info() {
+  
+  $query = db_select('field_config', 'f');
+  $query->fields('fc', array('field_name'));
+  $query->condition('f.module', 'user_message', '=');
+  $query->condition('fc.bundle', 'user', '=');
+  $query->addJoin('LEFT OUTER', 'field_config_instance', 'fc', 'f.field_name=fc.field_name');
+  $result = $query->execute();
+  $field = $result->fetchField();
+  return (isset($field)) ? $field : FALSE;
+}
+/** End bLocks **/
+
+/** Field installation **/
+function user_message_enable(){
+  //To avaoid name space conflicts we need to install our fields
+    foreach (_user_message_installed_fields() as $field){
+        field_create_field($field);
+    }
+   
+    foreach (_user_message_installed_instances() as $instance) {
+        field_create_instance($instance);
+    }
+}
+
+function _user_message_installed_fields(){
+    $t = get_t();
+    return array(
+        'field_message' => array(
+            'field_name' => 'field_message',
+            'type' => 'user_message',
+            'label' => $t('Message'),
+            ),
+    );
+}
+
+function _user_message_installed_instances(){
+    $t = get_t();
+    // Instead of creting new field we are reusing existing one  by simply creating a new instance
+    return array(
+        'field_message' => array(
+            'field_name' => 'field_message',
+            'type' => 'user_message',
+            'label' => $t('Message'),
+            'entity_type' => 'user',
+            'bundle' => 'user',
+        ),
+    );
+}

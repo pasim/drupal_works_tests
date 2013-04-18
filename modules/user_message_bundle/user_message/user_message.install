@@ -1,0 +1,83 @@
+<?php
+/**
+ * @file
+ * Install, update, and uninstall functions for the user_message module.
+ */
+
+/**
+ * Implements hook_field_schema().
+ *
+ * Defines the database schema of the field, using the format used by the
+ * Schema API.
+ *
+ * All implementations of hook_field_schema() must be in the module's
+ * .install file.
+ *
+ * @see hook_field_schema()
+ * @ingroup user_message
+ */
+function user_message_field_schema($field) {
+  
+  switch ($field['type']){
+    case 'user_message':
+      
+      $columns = array(
+    'message' => array(
+        'type' => 'varchar',
+        'length' => 100,
+        'not null' => FALSE,
+        'description'=>'Stores message text'
+        ),
+    'timestamp' => array(
+        'type' => 'int', 
+        'not null' => FALSE, 
+        'description'=>'Stores timestamp when message was saved or updated'
+        ),
+    'toogle' => array(
+        'type' => 'int', 
+        'not null' => TRUE, 
+        'default'=>0, 
+        'description'=>'Toogle message display'
+     ),
+  );
+      
+  $indexes = array(
+    'message' => array('message'),
+    'timestamp' => array('timestamp'),
+  );
+      
+      break;
+  }
+  
+  
+  
+  return array(
+    'columns' => $columns,
+    'indexes' => $indexes,
+  );
+}
+ 
+/**
+ * implements hook_unistall() 
+ */
+function user_message_uninstall(){
+  
+  include_once 'user_message.module';
+    
+    // Loop over each of the fields defined by this module and delete
+  // all instances of the field, their data, and the field itself.
+    foreach (array_keys(_user_message_installed_fields()) as $field) {
+        field_delete_field($field);
+    }
+    $instances = field_info_instances("user", "user");
+    // Just deleting our instances not the field itself, cause it's used by other content types
+    foreach ($instances as $instance_name => $instance) {
+      if($instance_name == 'field_message'){
+        field_delete_instance($instance);
+        break;
+      }      
+    }
+    
+    field_purge_batch(1000);
+    
+}
