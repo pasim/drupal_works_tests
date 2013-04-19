@@ -29,6 +29,7 @@ function user_message_permission() {
 
 /**
  * Implements hook_field_access().
+ * inspired from example modules
  */
 
 function user_message_field_access($op, $field, $entity_type, $entity, $account) {
@@ -126,7 +127,6 @@ function user_message_field_info() {
  * this: #RRGGBB. If the item validates, we do nothing. If it doesn't
  * validate, we add our own error notification to the $errors parameter.
  *
- * @see field_example_field_widget_error()
  */
 function user_message_field_validate($entity_type, $entity, $field, $instance, $langcode, $items, &$errors) {
   foreach ($items as $delta => $item) {
@@ -249,6 +249,10 @@ function user_message_field_widget_info() {
 function user_message_field_widget_form(&$form, &$form_state, $field, $instance, $langcode, $items, $delta, $element) {
   
   //Pre caching values
+  /**
+  * I think there migh be a better way of doing this!!
+  * @todo probably remove
+  */
   $message = isset($items[$delta]['message']) ? $items[$delta]['message'] : NULL;
   $toogle = isset($items[$delta]['toogle']) ? $items[$delta]['toogle'] : 0;
   $time = (isset($items[$delta]['message']) && isset($items[$delta]['timestamp'])) ? $items[$delta]['timestamp'] : time();
@@ -415,6 +419,10 @@ function user_message_retrive_field_info() {
 /** End bLocks **/
 
 /** Field installation **/
+/**
+* Usually you'd to this via hook install, but since we create new field in our module
+* we must move hook_enable here
+*/
 function user_message_enable(){
   //To avaoid name space conflicts we need to install our fields
     foreach (_user_message_installed_fields() as $field){
@@ -449,4 +457,27 @@ function _user_message_installed_instances(){
             'bundle' => 'user',
         ),
     );
+}
+
+function user_message_form_user_profile_form_alter(&$form, &$form_state, $form_id){
+  //dsm($form);
+  /**
+  * this will be used for forms ajax call, see readme for todo's
+  */ 
+ // $form["#submit"] = array('user_message_profile_submit');
+}
+
+
+function user_message_profile_submit(&$form, &$form_state) {
+  dsm($form_state['values']);
+  //$form['values']['field_message']['und'][0]['message']; //// etc
+}
+
+/**
+* @todo finnish ajax implementation
+*/
+
+function user_message_ajax_toogle(){
+  $form_state = array();
+  $form_state['values']['field_message']['und'][0]['toogle'] = (!empty($form['values']['field_message']['und'][0]['message'])) ? $form_state['values']['field_message']['und'][0]['toogle'] : 0;
 }
