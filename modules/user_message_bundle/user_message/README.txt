@@ -1,7 +1,8 @@
 User message Module
 
 1. Installation
-  This module depends on User Revisions module and it comes bundled in, so;
+  This module depends on User Revisions module - http://drupal.org/project/user_revision, it comes within user message
+  bundle so;
   To get this on working first Install User Revisions module like any other drupal module
   Then enable User Message module
 2. Configure permissions under admin/people/permissions, look for "User Live status message" and adjust properly
