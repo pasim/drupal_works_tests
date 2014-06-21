@@ -1,0 +1,7 @@
+;$Id$
+name = Item form
+description = Provides exportable specific forms as content panes
+core = 7.x
+package = "Ctools and Forms Demo"
+; @TODO If panels dependency is removed, add ctools dependency.
+dependencies[] = panels

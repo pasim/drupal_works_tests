@@ -1,0 +1,119 @@
+<?php
+
+//$Id$
+
+/**
+ * @file item_form.module
+ *
+ * This module provides link data storage and link rendering in panel pane.
+ */
+
+/**
+ * Implementation of hook_permission().
+ */
+function link_pane_permission() {
+  return array(
+      'administer item_form' => array(
+          'title' => t('Administer Form panes.'),
+          'description' => t('Administer forms available in form panes.')
+      )
+  );
+}
+
+/**
+ * Implementation of hook_ctools_plugin_api().
+ *
+ * Tell CTools that we support the default_item_form_presets API.
+ */
+function item_form_ctools_plugin_api($owner, $api) {
+  if ($owner == 'item_form' && $api == 'default_item_form_presets') {
+    return array('version' => 1);
+  }
+}
+
+/**
+ * implements hook_ctools_plugin_directory($owner, $plugin_type);
+ */
+function item_form_ctools_plugin_directory($owner, $plugin_type) {
+
+  if ($owner == 'ctools') {
+    return 'plugins/' . $plugin_type;
+  }
+}
+
+/**
+ * Implementation of hook_default_item_form_preset().
+ *
+ * Provide a couple of default presets.
+ */
+function item_form_default_item_form_preset() {
+  $export = array();
+
+  $preset = new stdClass;
+  $preset->api_version = 1;
+  $preset->admin_title = 'Sample form';
+  $preset->name = 'sample_form_item';
+  $preset->description = 'Kind of a sample form.';
+  $preset->formdata = array(
+      'settings' => array(
+          'sum_value_items' => '20,30,40',
+          'application' => 'fbCoolAPP',
+          'free_ammount' => 1,
+      ),
+  );
+
+
+  $export['default_item_form_preset'] = $preset;
+
+  return $export;
+}
+
+/**
+ * implements hook_node_load()
+ */
+function item_form_node_load($nodes, $types) {
+
+  global $user;
+
+  if (arg(0) == 'node' && arg(2) == 'edit') {
+    //dsm($nodes);
+    //dsm($types);
+    $node = array_shift($nodes);
+
+    if (!$node) {
+      return;
+    }
+
+    $items = new stdClass();
+
+    $items->type = $node->type;
+
+    $editor = '';
+
+    if (isset($node->revision_uid)) {
+      if ($node->revision_uid == $user->uid) {
+        $editor .= 'You';
+      } else {
+        $user = user_load($node->revision_uid);
+        $editor .= $user->name;
+      }
+    } else {
+      $editor .= "nobody";
+    }
+
+    $items->last_edited_by = $editor;
+
+    $items->created = date("Y m d", $node->created);
+    $items->was_last_edited = date("Y m d", $node->changed);
+
+    $data = array('item_form_settings' => $items);
+
+    drupal_add_css(drupal_get_path("module", "item_form") . "/css/item_form_node.css", "file");
+
+    drupal_add_js($data, 'setting');
+
+    $path = drupal_get_path("module", "item_form") . "/js/item_form_node.js";
+
+    drupal_add_js($path, "file");
+  }
+}
